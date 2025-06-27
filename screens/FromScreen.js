@@ -85,23 +85,23 @@ const FromScreen = ({ route }) => {
     fetchIncomes();
   }, []);
 
-  const handleItemSelect = (item, type) => { // Unified handler
-    let selectedValue = '';
+  const handleItemSelect = (item, type) => {
+    let selectedValue = { name: '', id: null, tableName: '' };
     switch (type) {
       case 'bank':
-        selectedValue = item.name;
+        selectedValue = { name: item.name, id: item.id, tableName: 'banks' };
         break;
       case 'expense':
-        selectedValue = item.description;
+        selectedValue = { name: item.description, id: item.id, tableName: 'expenses' };
         break;
       case 'income':
-        selectedValue = item.source;
+        selectedValue = { name: item.source, id: item.id, tableName: 'incomes' };
         break;
       default:
         console.warn('Unknown item type');
         return;
     }
-    onItemSelected(selectedValue); // Pass the selected value
+    onItemSelected(selectedValue);
     navigation.goBack();
   };
 

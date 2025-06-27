@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 
 const db = SQLite.openDatabase(
@@ -10,53 +10,60 @@ const db = SQLite.openDatabase(
   }
 );
 
-const InsertBank = () => {
+const InsertBank = ({ navigation }) => {
   const [bankName, setBankName] = React.useState('');
   const [accountNumber, setAccountNumber] = React.useState('');
 
+  const formatAmount = (value) => {
+    const cleanedValue = value.replace(/[^0-9]/g, '');
+    return cleanedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const handleAccountChange = (value) => {
+    setAccountNumber(formatAmount(value));
+  };
+
   const addBank = () => {
     if (bankName && accountNumber) {
+      const formattedAccountNumber = accountNumber.replace(/,/g, '');
+
       db.transaction(tx => {
         tx.executeSql(
           'INSERT INTO banks (name, amount) VALUES (?, ?)',
-          [bankName, accountNumber],
+          [bankName, formattedAccountNumber],
           () => {
-            console.log('User added successfully');
-            loadUsers(); // بارگذاری کاربران جدید
+            Alert.alert('موفقیت', 'حساب بانکی با موفقیت اضافه شد!');
+            navigation.replace('Profile');
           },
           (tx, error) => {
             console.error('Error adding user: ', error);
           }
         );
       });
-      setBankName(''); // تنظیم دوباره نام به رشته خالی
-      setAccountNumber(''); // تنظیم دوباره مقدار شماره حساب به رشته خالی
+      setBankName('');
+      setAccountNumber('');
     } else {
-      console.log('Bank Name and Account Number cannot be empty');
+      Alert.alert('خطا', 'نام بانک و شماره حساب نمی‌توانند خالی باشند');
     }
-  };
-
-  const handleSubmit = () => {
-    addBank(); // فراخوانی تابع افزودن کاربر
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Insert Bank Details</Text>
+      <Text style={styles.title}>اضافه کردن حساب بانکی</Text>
       <TextInput
         style={styles.input}
-        placeholder="Bank Name"
+        placeholder="نام بانک"
         value={bankName}
         onChangeText={setBankName}
       />
       <TextInput
         style={styles.input}
-        placeholder="Account Number"
+        placeholder="مقدار اولیه حساب"
         value={accountNumber}
-        onChangeText={setAccountNumber}
+        onChangeText={handleAccountChange}
         keyboardType="numeric"
       />
-      <Button title="Submit" onPress={handleSubmit} />
+      <Button title="ثبت" onPress={addBank} />
     </View>
   );
 };

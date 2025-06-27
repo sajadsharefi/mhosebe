@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 
 const db = SQLite.openDatabase(
@@ -14,28 +14,41 @@ const InsertExpen = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
 
+  const formatAmount = (value) => {
+    // حذف کاراکترهای غیر عددی
+    const cleanedValue = value.replace(/[^0-9]/g, '');
+    // فرمت کردن به رشته با کاما
+    return cleanedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const handleAmountChange = (value) => {
+    setAmount(formatAmount(value));
+  };
+
   const addExpen = () => {
     if (description && amount) {
+      // تبدیل مقدار به عدد صحیح (ریال) بدون کاما
+      const formattedAmount = parseFloat(amount.replace(/,/g, ''));
+      
       db.transaction(tx => {
         tx.executeSql(
           'INSERT INTO expenses (description, amount) VALUES (?, ?)',
-          [description, amount],
+          [description, formattedAmount],
           () => {
-            console.log('Expense added successfully');
-            navigation.navigate('Expen'); // بازگشت به صفحه هزینه‌ها
+            Alert.alert('موفقیت', 'هزینه با موفقیت اضافه شد!');
+            navigation.replace('Expen');
           },
           (tx, error) => {
-            console.error('Error adding expense: ', error);
+            Alert.alert('خطا', 'خطا در اضافه کردن هزینه: ' + error.message);
           }
         );
       });
       setDescription(''); // تنظیم دوباره توضیحات به رشته خالی
       setAmount(''); // تنظیم دوباره مقدار هزینه به رشته خالی
     } else {
-      console.log('Description and Amount cannot be empty');
+      Alert.alert('خطا', 'توضیحات و مقدار نمی‌توانند خالی باشند');
     }
   };
-
 
   return (
     <View style={styles.container}>
@@ -50,7 +63,7 @@ const InsertExpen = ({ navigation }) => {
         style={styles.input}
         placeholder="مقدار"
         value={amount}
-        onChangeText={setAmount}
+        onChangeText={handleAmountChange}
         keyboardType="numeric"
       />
       <Button title="ثبت" onPress={addExpen} />

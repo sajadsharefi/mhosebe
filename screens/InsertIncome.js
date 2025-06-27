@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 
 const db = SQLite.openDatabase(
@@ -14,25 +14,36 @@ const InsertIncome = ({ navigation }) => {
   const [source, setSource] = useState('');
   const [amount, setAmount] = useState('');
 
+  const formatAmount = (value) => {
+    const cleanedValue = value.replace(/[^0-9]/g, '');
+    return cleanedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const handleAmountChange = (value) => {
+    setAmount(formatAmount(value));
+  };
+
   const addIncome = () => {
     if (source && amount) {
+      const formattedAmount = parseFloat(amount.replace(/,/g, ''));
+      
       db.transaction(tx => {
         tx.executeSql(
-          'INSERT INTO income (source, amount) VALUES (?, ?)',
-          [source, amount],
+          'INSERT INTO incomes (source, amount) VALUES (?, ?)',
+          [source, formattedAmount],
           () => {
-            console.log('Income added successfully');
-            navigation.navigate('Income'); // بازگشت به صفحه نمایش درآمدها
+            Alert.alert('موفقیت', 'درآمد با موفقیت اضافه شد!');
+            navigation.replace('Income');
           },
           (tx, error) => {
             console.error('Error adding income: ', error);
           }
         );
       });
-      setSource(''); // تنظیم دوباره منبع به رشته خالی
-      setAmount(''); // تنظیم دوباره مقدار به رشته خالی
+      setSource('');
+      setAmount('');
     } else {
-      console.log('Source and Amount cannot be empty');
+      Alert.alert('خطا', 'منبع و مقدار نمی‌توانند خالی باشند');
     }
   };
 
@@ -49,7 +60,7 @@ const InsertIncome = ({ navigation }) => {
         style={styles.input}
         placeholder="مقدار"
         value={amount}
-        onChangeText={setAmount}
+        onChangeText={handleAmountChange}
         keyboardType="numeric"
       />
       <Button title="ثبت" onPress={addIncome} />

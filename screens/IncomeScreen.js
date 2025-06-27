@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SQLite from 'react-native-sqlite-storage';
 
@@ -16,12 +16,24 @@ const IncomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadIncome(); // بارگذاری درآمدها هنگام بارگذاری کامپوننت
+
+    const backAction = () => {
+      navigation.navigate('Home'); // صفحه‌ای که می‌خواهید به آن بروید
+      return true; // جلوگیری از رفتار پیش‌فرض دکمه برگشت
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove(); // حذف لیسنر در هنگام Unmount
   }, []);
 
   const loadIncome = () => {
     db.transaction(tx => {
       tx.executeSql(
-        'SELECT * FROM income',
+        'SELECT * FROM incomes',
         [],
         (_, results) => {
           const incomeArray = [];
@@ -35,12 +47,16 @@ const IncomeScreen = ({ navigation }) => {
     });
   };
 
+  const formatAmount = (amount) => {
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
   return (
     <View style={styles.container}>
       {income.map((item, index) => (
         <View key={index} style={styles.row}>
           <Text style={styles.textrow}>{item.source}</Text>
-          <Text style={styles.textrow}>{item.amount}</Text>
+          <Text style={styles.textrow}>{formatAmount(item.amount)}</Text>
         </View>
       ))}
 

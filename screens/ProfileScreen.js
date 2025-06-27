@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SQLite from 'react-native-sqlite-storage';
 
@@ -11,11 +11,23 @@ const db = SQLite.openDatabase(
   }
 );
 
-const InsertBank = ({ navigation }) => {
+const ProfileScreen = ({ navigation }) => {
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
     loadUsers(); // بارگذاری کاربران هنگام بارگذاری کامپوننت
+
+    const backAction = () => {
+      navigation.navigate('Home'); // صفحه‌ای که می‌خواهید به آن بروید
+      return true; // جلوگیری از رفتار پیش‌فرض دکمه برگشت
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove(); // حذف لیسنر در هنگام Unmount
   }, []);
 
   const loadUsers = () => {
@@ -35,13 +47,16 @@ const InsertBank = ({ navigation }) => {
     });
   };
 
+  const formatAmount = (amount) => {
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
   return (
     <View style={styles.container}>
       {users.map((bank, index) => (
         <View key={index} style={styles.row}>
           <Text style={styles.textrow}>{bank.name}</Text>
-
-          <Text style={styles.textrow}>{bank.amount}</Text>
+          <Text style={styles.textrow}>{formatAmount(bank.amount)}</Text>
         </View>
       ))}
 
@@ -78,4 +93,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InsertBank;
+export default ProfileScreen;

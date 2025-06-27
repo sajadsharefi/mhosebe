@@ -5,9 +5,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 const db = SQLite.openDatabase(
   { name: 'data.db', location: 'default' },
-  () => {},
+  () => {
+    console.log('Database opened successfully');
+  },
   error => {
-    console.error(error);
+    console.error('Error opening database:', error);
   }
 );
 
@@ -20,56 +22,153 @@ const TranScreen = () => {
   const [input3, setInput3] = useState(''); // از حساب
   const [input4, setInput4] = useState(''); // به حساب
   const [input5, setInput5] = useState(''); // توضیحات
+  const [fromAccountId, setFromAccountId] = useState(null);
+  const [toAccountId, setToAccountId] = useState(null);
+  const [fromAccountTable, setFromAccountTable] = useState('');
+  const [toAccountTable, setToAccountTable] = useState('');
+  const [fromAccountName, setFromAccountName] = useState('');
+  const [toAccountName, setToAccountName] = useState('');
 
   useEffect(() => {
     if (route.params) {
-      const { selectedItem, selectedBank } = route.params;
+      const { selectedDate, selectedAmount, selectedFromAccount, selectedToAccount } = route.params;
 
-      if (selectedItem) setInput2(selectedItem.amount || '');
-      if (selectedBank) setInput3(selectedBank); // تنظیم مقدار input3
+      if (selectedDate) setInput1(selectedDate); // قرار دادن تاریخ در input1
+      if (selectedAmount) setInput2(selectedAmount.amount || '');
+
+      if (selectedFromAccount) {
+        setFromAccountName(selectedFromAccount.name || '');
+        setInput3(selectedFromAccount.name || '');
+        setFromAccountId(selectedFromAccount.id || null);
+        setFromAccountTable(selectedFromAccount.tableName || '');
+      }
+
+      if (selectedToAccount) {
+        setToAccountName(selectedToAccount.name || '');
+        setInput4(selectedToAccount.name || '');
+        setToAccountId(selectedToAccount.id || null);
+        setToAccountTable(selectedToAccount.tableName || '');
+      }
     }
   }, [route.params]);
 
-  const showAlert = () => {
-    const amount = parseFloat(input2);
+  const formatAmount = (value) => {
+    const cleanedValue = value.replace(/[^0-9]/g, ''); // حذف کاراکترهای غیر عددی
+    return cleanedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ","); // فرمت کردن به عدد با کاما
+  };
 
-    if (!input1 || !input2 || !input3 || !input4 || !input5) { // Added input4 validation
+  const handleAmountChange = (value) => {
+    setInput2(formatAmount(value));
+  };
+
+  const showAlert = () => {
+    if (!input1 || !input2 || !input3 || !input4 || !input5) {
       Alert.alert("خطا", "لطفا همه فیلدها را پر کنید.");
       return;
     }
+
+    const amount = parseFloat(input2.replace(/,/g, '')); // حذف کاماها برای محاسبه
 
     if (isNaN(amount) || amount <= 0) {
       Alert.alert("خطا", "مبلغ باید یک عدد مثبت باشد.");
       return;
     }
 
-    Alert.alert("ورودی‌ها", `1: ${input1}\n2: ${input2}\n3: ${input3}\n4: ${input4}\n5: ${input5}`, [{ // Added input4 to the alert
-      text: "ثبت", onPress: () => {
-        // به‌روزرسانی داده‌ها در پایگاه داده
-        Keyboard.dismiss();
-      }
-    }, { text: "انصراف", style: "cancel" }]);
+    Alert.alert("ورودی‌ها", `تاریخ: ${input1}\nمبلغ: ${input2}\nاز حساب: ${input3}\nبه حساب: ${input4}\nتوضیحات: ${input5}`, [
+      {
+        text: "ثبت",
+        onPress: () => {
+          Keyboard.dismiss();
+          db.transaction(tx => {
+            // Update the "from" account
+            if (fromAccountTable && fromAccountId) {
+              tx.executeSql(
+                `UPDATE ${fromAccountTable} SET amount = amount - ? WHERE id = ?`,
+                [amount, fromAccountId],
+                (txObj, resultSet) => {
+                  console.log('From Account updated successfully:', resultSet.rowsAffected);
+                },
+                (txObj, error) => {
+                  console.log('Error updating From Account:', error);
+                  Alert.alert("خطا", "خطا در بروزرسانی حساب مبدا.");
+                  return; // Exit the transaction if update fails
+                }
+              );
+            }
+
+            // Update the "to" account
+            if (toAccountTable && toAccountId) {
+              tx.executeSql(
+                `UPDATE ${toAccountTable} SET amount = amount + ? WHERE id = ?`,
+                [amount, toAccountId],
+                (txObj, resultSet) => {
+                  console.log('To Account updated successfully:', resultSet.rowsAffected);
+                },
+                (txObj, error) => {
+                  console.log('Error updating To Account:', error);
+                  Alert.alert("خطا", "خطا در بروزرسانی حساب مقصد.");
+                  return; // Exit the transaction if update fails
+                }
+              );
+            }
+
+            // Insert the transaction
+            tx.executeSql(
+              'INSERT INTO transactions (date, amount, from_account, to_account, description) VALUES (?, ?, ?, ?, ?)',
+              [input1, input2, input3, input4, input5],
+              (txObj, resultSet) => {
+                console.log('Transaction inserted successfully:', resultSet.insertId);
+                setInput1('');
+                setInput2('');
+                setInput3('');
+                setInput4('');
+                setInput5('');
+                Alert.alert("موفق", "تراکنش با موفقیت ثبت شد.");
+              },
+              (txObj, error) => {
+                console.log('Error inserting transaction:', error);
+                Alert.alert("خطا", "خطا در ثبت تراکنش.");
+              }
+            );
+          }, (error) => {
+            console.log('Transaction error:', error);
+            Alert.alert("خطا", "خطا در ثبت تراکنش.");
+          });
+        }
+      },
+      { text: "انصراف", style: "cancel" }
+    ]);
   };
 
   const openCalendar = () => {
-    navigation.navigate('Calendar', { onDateSelect: setInput1 });
+    navigation.navigate('Calendar'); // فقط هدایت به تقویم
   };
 
   const openFrom = () => {
     navigation.navigate('FromScreen', {
       onItemSelected: (selectedValue) => {
-        setInput3(selectedValue); // تنظیم مقدار input3
-        console.log('مقدار انتخاب شده:', selectedValue);
+        if (selectedValue) {
+          setFromAccountName(selectedValue.name || '');
+          setInput3(selectedValue.name || '');
+          setFromAccountId(selectedValue.id || null);
+          setFromAccountTable(selectedValue.tableName || '');
+        }
       },
-  })};
+    });
+  };
 
-    const openTo = () => {
-    navigation.navigate('ToScreen', { // Assuming you have a ToScreen
+  const openTo = () => {
+    navigation.navigate('ToScreen', {
       onItemSelected: (selectedValue) => {
-        setInput4(selectedValue); // تنظیم مقدار input4
-        console.log('مقدار انتخاب شده:', selectedValue);
+        if (selectedValue) {
+          setToAccountName(selectedValue.name || '');
+          setInput4(selectedValue.name || '');
+          setToAccountId(selectedValue.id || null);
+          setToAccountTable(selectedValue.tableName || '');
+        }
       },
-  })};
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -78,13 +177,13 @@ const TranScreen = () => {
         style={styles.input}
         value={input1}
         onChangeText={setInput1}
-        onFocus={openCalendar}
+        onFocus={openCalendar} // استفاده از onFocus برای باز کردن تقویم
         placeholder="تاریخ"
       />
       <TextInput
         style={styles.input}
         value={input2}
-        onChangeText={setInput2}
+        onChangeText={handleAmountChange} // استفاده از تابع فرمت‌کننده
         placeholder="مبلغ"
         keyboardType="numeric"
       />
@@ -95,7 +194,7 @@ const TranScreen = () => {
         onFocus={openFrom}
         placeholder="از حساب"
       />
-       <TextInput
+      <TextInput
         style={styles.input}
         value={input4}
         onChangeText={setInput4}

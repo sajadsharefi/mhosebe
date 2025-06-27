@@ -1,3 +1,4 @@
+// ToScreen.js
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
@@ -25,9 +26,9 @@ const ToScreen = ({ route }) => {
   const fetchAccounts = () => {
     db.transaction(tx => {
       tx.executeSql(
-        'SELECT * FROM accounts',
+        'SELECT * FROM banks', // تغییر نام جدول به banks
         [],
-        (_, results) => {
+        (tx, results) => {
           let fetchedAccounts = [];
           for (let i = 0; i < results.rows.length; i++) {
             fetchedAccounts.push(results.rows.item(i));
@@ -36,6 +37,7 @@ const ToScreen = ({ route }) => {
         },
         error => {
           console.error("Error fetching accounts:", error);
+          Alert.alert("Error", "Failed to fetch accounts.");
         }
       );
     });
@@ -85,17 +87,17 @@ const ToScreen = ({ route }) => {
     fetchIncomes();
   }, []);
 
-  const handleToItemSelect = (item, type) => { // Renamed handler
-    let selectedValue = '';
+  const handleToItemSelect = (item, type) => {
+    let selectedValue = { name: '', id: null, tableName: '' };
     switch (type) {
       case 'account':
-        selectedValue = item.name;
+        selectedValue = { name: item.name, id: item.id, tableName: 'banks' }; // Assuming accounts are in 'banks' table
         break;
       case 'expense':
-        selectedValue = item.description;
+        selectedValue = { name: item.description, id: item.id, tableName: 'expenses' };
         break;
       case 'income':
-        selectedValue = item.source;
+        selectedValue = { name: item.source, id: item.id, tableName: 'incomes' };
         break;
       default:
         console.warn('Unknown item type');

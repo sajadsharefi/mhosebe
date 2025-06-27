@@ -37,6 +37,18 @@ function HomeScreen({ navigation }) {
       >
         <Text style={styles.buttonText}>دریافت پیامک ها</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('TransList')}
+      >
+        <Text style={styles.buttonText}>نمایش تراکنش ها</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('Planning')}
+      >
+        <Text style={styles.buttonText}>برنامه ریزی</Text>
+      </TouchableOpacity>
     </View>
   );
 }
